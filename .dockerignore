@@ -2,6 +2,7 @@
 .github
 .gitattributes
 .local
+.config
 .venv
 __pycache__
 *.py[cod]
