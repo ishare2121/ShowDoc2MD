@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "showdoc2md"
+version = "0.2.0"
+description = "Read and export password-protected ShowDoc projects as Markdown via CLI, HTTP, or MCP."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+keywords = ["showdoc", "markdown", "mcp", "ai", "rag"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Operating System :: OS Independent",
+]
+dependencies = [
+  "requests>=2.31,<3",
+  "mcp>=2,<3",
+]
+
+[project.scripts]
+showdoc2md = "showdoc2md.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["showdoc2md*"]

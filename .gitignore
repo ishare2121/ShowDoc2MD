@@ -1,0 +1,16 @@
+.venv/
+.local/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.env
+.env.*
+*.log
+output/
+real-output*/
+http-output/
+test-output*/
+build/
+dist/
+.DS_Store
