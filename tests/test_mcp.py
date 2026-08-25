@@ -3,9 +3,10 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
+import httpx2
 from mcp import Client
 
-from showdoc2md.mcp_server import mcp
+from showdoc2md.mcp_server import BearerTokenMiddleware, mcp, run_mcp
 from showdoc2md.url import parse_showdoc_url
 
 
@@ -117,6 +118,28 @@ class MCPTests(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(result.is_error)
         self.assertTrue(result.structured_content["complete"])
         self.assertEqual(result.structured_content["pages"], 2)
+
+    async def test_bearer_token_middleware(self):
+        async def app(_scope, _receive, send):
+            await send({"type": "http.response.start", "status": 204, "headers": []})
+            await send({"type": "http.response.body", "body": b""})
+
+        transport = httpx2.ASGITransport(app=BearerTokenMiddleware(app, "example-secret"))
+        async with httpx2.AsyncClient(transport=transport, base_url="http://test") as client:
+            missing = await client.post("/mcp")
+            wrong = await client.post("/mcp", headers={"Authorization": "Bearer wrong"})
+            correct = await client.post("/mcp", headers={"Authorization": "Bearer example-secret"})
+
+        self.assertEqual(missing.status_code, 401)
+        self.assertEqual(wrong.status_code, 401)
+        self.assertEqual(correct.status_code, 204)
+
+
+class MCPDeploymentSafetyTests(unittest.TestCase):
+    def test_remote_bind_requires_token_by_default(self):
+        with patch.dict(os.environ, {}, clear=True):
+            with self.assertRaisesRegex(ValueError, "Bearer Token"):
+                run_mcp(host="0.0.0.0", allowed_hosts=["192.0.2.10"])
 
 
 if __name__ == "__main__":

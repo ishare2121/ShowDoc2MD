@@ -110,9 +110,15 @@ http://127.0.0.1:18765/mcp
 
 ### 局域网 / 远程机器
 
-MCP SDK 默认启用 DNS-rebinding 防护。监听非本机地址时，ShowDoc2MD 要求你明确写出 AI 实际访问的服务器 Host/IP：
+MCP SDK 默认启用 DNS-rebinding 防护。ShowDoc2MD 还对远程监听启用了安全默认值：
+
+- 必须显式声明允许的 Host/IP。
+- 默认必须设置 `SHOWDOC_MCP_TOKEN`，客户端通过 Bearer Token 认证。
+
+服务器示例：
 
 ```powershell
+$env:SHOWDOC_MCP_TOKEN='replace-with-a-long-random-token'
 .\showdoc2md.cmd mcp `
   --host 0.0.0.0 `
   --port 18765 `
@@ -124,6 +130,14 @@ MCP SDK 默认启用 DNS-rebinding 防护。监听非本机地址时，ShowDoc2M
 ```text
 http://192.168.1.20:18765/mcp
 ```
+
+并为这个 MCP 连接配置 HTTP Header：
+
+```text
+Authorization: Bearer replace-with-a-long-random-token
+```
+
+不同 AI 客户端的 MCP 配置文件格式不同，但只要它支持 Streamable HTTP 自定义 headers 即可。
 
 如果通过域名访问：
 
@@ -142,7 +156,20 @@ showdoc2md mcp \
 --allowed-origin https://app.example.com
 ```
 
-> **安全提示**：不要把无认证的 MCP 服务直接暴露到公网。公网部署建议放在 VPN/Tailscale、反向代理认证或符合 MCP 规范的 OAuth 2.1 资源服务器之后。
+如果 MCP 只运行在你完全信任的私网/VPN，并且明确希望关闭 Bearer Token，可以显式加：
+
+```text
+--allow-unauthenticated-remote
+```
+
+> **安全提示**：不要把无认证的 MCP 服务直接暴露到公网。静态 Bearer Token 适合个人/小团队部署；正式公网服务建议再放到 TLS、VPN/Tailscale、认证反向代理或符合 MCP 规范的 OAuth 2.1 资源服务器之后。
+
+### 两个不同的密码不要混淆
+
+- `SHOWDOC_PASSWORD`：ShowDoc 文档本身的访问密码。
+- `SHOWDOC_MCP_TOKEN`：AI 客户端连接 ShowDoc2MD MCP Server 时使用的 Bearer Token。
+
+它们用途不同，均不会由 MCP 工具回显。
 
 ### Docker
 
@@ -150,6 +177,7 @@ showdoc2md mcp \
 
 ```bash
 export SHOWDOC_PASSWORD='your-document-password'
+export SHOWDOC_MCP_TOKEN='replace-with-a-long-random-token'
 docker compose -f docker-compose.example.yml up -d --build
 ```
 

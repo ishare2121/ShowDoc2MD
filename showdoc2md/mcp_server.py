@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hmac
 import os
 from pathlib import Path
 from typing import Any
@@ -18,6 +19,46 @@ Use showdoc_probe first when access is uncertain. Use showdoc_list_pages to insp
 Never guess or brute-force passwords. Do not expose passwords in tool output."""
 
 mcp = MCPServer("ShowDoc2MD", instructions=MCP_INSTRUCTIONS)
+
+
+class BearerTokenMiddleware:
+    """Small ASGI wrapper for deployments that want a static bearer token.
+
+    MCP itself remains the protocol spoken behind this wrapper. The token is
+    intentionally configured only on the server and is never returned by a
+    tool result or logged here.
+    """
+
+    def __init__(self, app: Any, token: str) -> None:
+        self.app = app
+        self.token = token.encode("utf-8")
+
+    async def __call__(self, scope: dict[str, Any], receive: Any, send: Any) -> None:
+        if scope.get("type") != "http" or scope.get("method") == "OPTIONS":
+            await self.app(scope, receive, send)
+            return
+
+        headers = {k.lower(): v for k, v in scope.get("headers", [])}
+        supplied = headers.get(b"authorization", b"")
+        prefix = b"Bearer "
+        valid = supplied.startswith(prefix) and hmac.compare_digest(supplied[len(prefix) :], self.token)
+        if valid:
+            await self.app(scope, receive, send)
+            return
+
+        body = b'{"error":"unauthorized"}'
+        await send(
+            {
+                "type": "http.response.start",
+                "status": 401,
+                "headers": [
+                    (b"content-type", b"application/json"),
+                    (b"content-length", str(len(body)).encode("ascii")),
+                    (b"www-authenticate", b"Bearer"),
+                ],
+            }
+        )
+        await send({"type": "http.response.body", "body": body})
 
 
 def _resolve_password(password: str | None) -> str:
@@ -190,6 +231,8 @@ def run_mcp(
     path: str = "/mcp",
     allowed_hosts: list[str] | None = None,
     allowed_origins: list[str] | None = None,
+    api_token: str | None = None,
+    allow_unauthenticated_remote: bool = False,
 ) -> None:
     """Run the MCP server over stdio or Streamable HTTP."""
     if transport == "stdio":
@@ -208,6 +251,13 @@ def run_mcp(
             "请添加 --allowed-host <AI 实际访问的主机名或IP>。"
         )
 
+    resolved_token = api_token if api_token is not None else os.getenv("SHOWDOC_MCP_TOKEN", "")
+    if host not in local_hosts and not resolved_token and not allow_unauthenticated_remote:
+        raise ValueError(
+            "远程 MCP 默认要求 Bearer Token。请设置 SHOWDOC_MCP_TOKEN，"
+            "或仅在受信任私网中显式使用 --allow-unauthenticated-remote。"
+        )
+
     transport_security = None
     if expanded_hosts:
         transport_security = TransportSecuritySettings(
@@ -224,7 +274,22 @@ def run_mcp(
     }
     if transport_security is not None:
         run_kwargs["transport_security"] = transport_security
-    mcp.run(transport="streamable-http", **run_kwargs)
+    if not resolved_token:
+        mcp.run(transport="streamable-http", **run_kwargs)
+        return
+
+    # MCPServer.run() owns uvicorn internally. For bearer auth we construct the
+    # exact same Streamable HTTP ASGI app, wrap it, then let uvicorn serve it.
+    import uvicorn
+
+    app = mcp.streamable_http_app(
+        streamable_http_path=path,
+        stateless_http=True,
+        json_response=True,
+        transport_security=transport_security,
+        host=host,
+    )
+    uvicorn.run(BearerTokenMiddleware(app, resolved_token), host=host, port=port)
 
 
 if __name__ == "__main__":

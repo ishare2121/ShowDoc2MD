@@ -8,7 +8,9 @@ ShowDoc2MD handles document URLs and passwords. Treat both as sensitive input.
 - Do not commit `.env`, exported documents, logs, passwords, or private ShowDoc URLs.
 - Keep the default MCP bind address (`127.0.0.1`) unless remote access is required.
 - For LAN/remote Streamable HTTP, configure `--allowed-host` explicitly.
-- Do not expose an unauthenticated MCP endpoint directly to the public Internet. Put it behind a private network/VPN or an authenticated reverse proxy / MCP OAuth deployment.
+- For LAN/remote Streamable HTTP, set `SHOWDOC_MCP_TOKEN`; ShowDoc2MD requires Bearer authentication by default for non-loopback listeners.
+- Use `--allow-unauthenticated-remote` only on a trusted private network/VPN when you deliberately do not want a token.
+- Do not expose an unauthenticated MCP endpoint directly to the public Internet. For public deployments, also use TLS plus a private network/VPN, authenticated reverse proxy, or an MCP OAuth deployment.
 
 ## Reporting a vulnerability
 

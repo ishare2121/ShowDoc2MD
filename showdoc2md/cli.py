@@ -73,6 +73,11 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="浏览器 MCP 客户端允许的 Origin，可重复指定",
     )
+    mcp_cmd.add_argument(
+        "--allow-unauthenticated-remote",
+        action="store_true",
+        help="允许远程监听时不使用 Bearer Token；只应在受信任私网/VPN中使用",
+    )
     return p
 
 
@@ -90,6 +95,7 @@ def main(argv: list[str] | None = None) -> int:
             path=args.path,
             allowed_hosts=args.allowed_host,
             allowed_origins=args.allowed_origin,
+            allow_unauthenticated_remote=args.allow_unauthenticated_remote,
         )
         return 0
 
