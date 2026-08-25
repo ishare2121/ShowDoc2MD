@@ -1,5 +1,7 @@
 # ShowDoc2MD
 
+[![CI](https://github.com/ishare2121/ShowDoc2MD/actions/workflows/ci.yml/badge.svg)](https://github.com/ishare2121/ShowDoc2MD/actions/workflows/ci.yml)
+
 将 **已知访问密码的 ShowDoc 项目**读取并转换为 Markdown，供 AI / Agent / RAG 使用。
 
 支持三种使用方式：

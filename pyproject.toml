@@ -19,6 +19,11 @@ dependencies = [
   "mcp>=2,<3",
 ]
 
+[project.urls]
+Homepage = "https://github.com/ishare2121/ShowDoc2MD"
+Repository = "https://github.com/ishare2121/ShowDoc2MD"
+Issues = "https://github.com/ishare2121/ShowDoc2MD/issues"
+
 [project.scripts]
 showdoc2md = "showdoc2md.cli:main"
 
